@@ -1,3 +1,3 @@
-{import <../test.txt> as parent1}
-{import <../test.txt> as parent1}
-{set ifa_grant = r}
+import <../test.txt> as parent
+set ifa_key = %parent.ifa_key%
+set ifa_grant = r

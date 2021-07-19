@@ -2,10 +2,27 @@
 #include <fstream>
 #include <iostream>
 
+#define CFVI_DEREFERENCE '%'
+
 using namespace cfvi;
 using interpretation::symbol;
 using std::ifstream;
 
+#pragma region structs
+struct range {
+	size_t start;
+	size_t length;
+};
+#pragma endregion
+#pragma region directory
+string directory_path_from_file_path(const string& a_file_path) {
+	size_t l_last_separator = a_file_path.find_last_of('/');
+	if (l_last_separator == string::npos)
+		return "";
+	return a_file_path.substr(0, l_last_separator + 1);
+}
+#pragma endregion
+#pragma region string
 vector<string> split(const string& a_string, const char& a_char) {
 	vector<string> result = { "" };
 	for (int i = 0; i < a_string.size(); i++)
@@ -35,7 +52,8 @@ string trim(const string& a_string, const vector<char>& a_chars) {
 		result = trim(result, a_chars[i]);
 	return result;
 }
-
+#pragma endregion
+#pragma region symbol
 vector<symbol>::iterator find_symbol(vector<symbol>& a_symbols, const string& a_identifier) {
 	return std::find_if(a_symbols.begin(), a_symbols.end(), [&](const symbol& a_symbol) { return a_symbol.identifier == a_identifier; });
 }
@@ -43,30 +61,6 @@ vector<symbol>::iterator find_symbol(vector<symbol>& a_symbols, const string& a_
 void prefix_symbols(vector<symbol>& a_symbols, const string& a_prefix) {
 	for (int i = 0; i < a_symbols.size(); i++)
 		a_symbols[i].identifier = a_prefix + "." + a_symbols[i].identifier;
-}
-
-string interpretation::get_chunk(const string& a_contents) {
-	size_t l_rank = 0;
-	size_t l_start_index = a_contents.find('{');
-	size_t l_end_index = a_contents.size();
-	for (int i = l_start_index; i < a_contents.size(); i++) {
-		if (a_contents[i] == '{') {
-			l_rank++;
-		}
-		else if (a_contents[i] == '}') {
-			if (l_rank == 1) {
-				l_end_index = i;
-				break;
-			}
-			else {
-				l_rank--;
-			}
-		}
-	}
-	if (l_end_index == a_contents.size())
-		return string();
-	size_t l_length = l_end_index - l_start_index + 1;
-	return a_contents.substr(l_start_index, l_length);
 }
 
 void merge_symbol(vector<symbol>& a_current, const symbol& a_symbol) {
@@ -82,57 +76,58 @@ void merge_symbols(vector<symbol>& a_current, const vector<symbol>& a_new) {
 		merge_symbol(a_current, l_symbol);
 }
 
-int interpretation::interpret(const string & a_file_path, vector<symbol>&a_symbols) {
+void dereference_symbols(string& a_line, vector<symbol>& a_symbols) {
+	vector<string> l_split = split(a_line, CFVI_DEREFERENCE);
+	for (int i = 1; i < l_split.size() - 1; i++) {
+		vector<symbol>::iterator l_loc = find_symbol(a_symbols, l_split[i]);
+		if (l_loc != a_symbols.end())
+			l_split[i] = l_loc->value;
+	}
+	a_line = join(l_split);
+}
+#pragma endregion
+#pragma region interpreting
+int interpretation::interpret(const string & a_file_path, vector<symbol>& a_symbols) {
 	ifstream ifs(a_file_path);
 	if (!ifs.is_open())
 		return EXIT_FAILURE;
-	string line;
-	string file_contents;
-	while (std::getline(ifs, line)) {
-		file_contents.insert(file_contents.end(), line.begin(), line.end());
-		file_contents.push_back('\n');
-	}
 
-	size_t l_last_separator = a_file_path.find_last_of('/');
-	string l_directory_path = a_file_path.substr(0, l_last_separator + 1);
-	if (l_last_separator == string::npos)
-		l_directory_path = "";
+	string l_directory_path = directory_path_from_file_path(a_file_path);
 
-	string l_chunk = get_chunk(file_contents);
-	while (l_chunk.size() > 0) {
-		interpret_chunk(l_directory_path, l_chunk, a_symbols);
-		file_contents.erase(0, l_chunk.size());
-		l_chunk = get_chunk(file_contents);
+	string l_line;
+	while (std::getline(ifs, l_line)) {
+		interpret_line(l_directory_path, l_line, a_symbols);
 	}
 	ifs.close();
+
 	return EXIT_SUCCESS;
 }
 
-void interpretation::interpret_chunk(const string& a_directory_path, string& a_chunk, vector<symbol>& a_symbols) {
-	a_chunk = trim(a_chunk, { '{', '}', '\n' });
-	if (a_chunk.size() > 4 && a_chunk.substr(0, 4) == "set ") {
-		interpret_set(a_chunk, a_symbols);
+void interpretation::interpret_line(const string& a_directory_path, string& a_line, vector<symbol>& a_symbols) {
+	dereference_symbols(a_line, a_symbols);
+	if (a_line.size() > 4 && a_line.substr(0, 4) == "set ") {
+		interpret_set(a_line, a_symbols);
 	}
-	else if (a_chunk.size() > 7 && a_chunk.substr(0, 7) == "delete ") {
-		interpret_delete(a_chunk, a_symbols);
+	else if (a_line.size() > 7 && a_line.substr(0, 7) == "delete ") {
+		interpret_delete(a_line, a_symbols);
 	}
-	else if (a_chunk.size() > 7 && a_chunk.substr(0, 7) == "import ") {
-		interpret_import(a_directory_path, a_chunk, a_symbols);
+	else if (a_line.size() > 7 && a_line.substr(0, 7) == "import ") {
+		interpret_import(a_directory_path, a_line, a_symbols);
 	}
 
 }
 
-void interpretation::interpret_set(string& a_chunk, vector<symbol>& a_symbols) {
+void interpretation::interpret_set(string& a_line, vector<symbol>& a_symbols) {
 	const size_t l_identifier_begin = 4;
-	size_t l_identifier_end = a_chunk.find('=');
+	size_t l_identifier_end = a_line.find('=');
 	size_t l_identifier_length = l_identifier_end - l_identifier_begin;
-	string l_identifier = a_chunk.substr(l_identifier_begin, l_identifier_length);
+	string l_identifier = a_line.substr(l_identifier_begin, l_identifier_length);
 	l_identifier = trim(l_identifier, ' ');
 
 	size_t l_value_begin = l_identifier_end + 1;
-	size_t l_value_end = a_chunk.length();
+	size_t l_value_end = a_line.length();
 	size_t l_value_length = l_value_end - l_value_begin;
-	string l_value = a_chunk.substr(l_value_begin, l_value_length);
+	string l_value = a_line.substr(l_value_begin, l_value_length);
 	l_value = trim(l_value, ' ');
 
 	merge_symbol(a_symbols, { l_identifier, l_value });
@@ -143,11 +138,11 @@ void interpretation::interpret_set(string& a_chunk, vector<symbol>& a_symbols) {
 
 }
 
-void interpretation::interpret_delete(string& a_chunk, vector<symbol>& a_symbols) {
+void interpretation::interpret_delete(string& a_line, vector<symbol>& a_symbols) {
 	const size_t l_identifier_begin = 7;
-	size_t l_identifier_end = a_chunk.size();
+	size_t l_identifier_end = a_line.size();
 	size_t l_identifier_length = l_identifier_end - l_identifier_begin;
-	string l_identifier = a_chunk.substr(l_identifier_begin, l_identifier_length);
+	string l_identifier = a_line.substr(l_identifier_begin, l_identifier_length);
 
 	vector<symbol>::iterator l_identifier_pos = find_symbol(a_symbols, l_identifier);
 	// SYMBOL ALREADY EXISTS
@@ -164,11 +159,11 @@ void interpretation::interpret_delete(string& a_chunk, vector<symbol>& a_symbols
 	}
 }
 
-void interpretation::interpret_import(const string& a_directory_path, string& a_chunk, vector<symbol>& a_symbols) {
-	const size_t l_path_begin = a_chunk.find('<');
-	size_t l_path_end = a_chunk.find('>');
+void interpretation::interpret_import(const string& a_directory_path, string& a_line, vector<symbol>& a_symbols) {
+	const size_t l_path_begin = a_line.find('<');
+	size_t l_path_end = a_line.find('>');
 	size_t l_path_length = l_path_end - l_path_begin;
-	string l_file_path = a_chunk.substr(l_path_begin + 1, l_path_length - 1);
+	string l_file_path = a_line.substr(l_path_begin + 1, l_path_length - 1);
 
 	string l_full_file_path;
 	if (l_file_path.find(':') != string::npos)
@@ -178,22 +173,22 @@ void interpretation::interpret_import(const string& a_directory_path, string& a_
 
 	vector<symbol> l_import_symbols;
 
-	size_t l_identifier_begin = a_chunk.find(" as ");
+	size_t l_identifier_begin = a_line.find(" as ");
 	if (l_identifier_begin != string::npos) {
 		l_identifier_begin += 4;
-		size_t l_identifier_end = a_chunk.size();
+		size_t l_identifier_end = a_line.size();
 		size_t l_identifier_length = l_identifier_end - l_identifier_begin;
-		string l_identifier = a_chunk.substr(l_identifier_begin, l_identifier_length);
+		string l_identifier = a_line.substr(l_identifier_begin, l_identifier_length);
 		if (!interpret(l_full_file_path, l_import_symbols)) {
 			prefix_symbols(l_import_symbols, l_identifier);
 			merge_symbols(a_symbols, l_import_symbols);
 #if CFVI_DEBUG
-			std::cout << "[ import ] SUCCESS: Imported file: \"" << l_full_file_path << "\" with prefix: " << l_identifier << " merging: " << l_import_symbols.size() << " symbols." << std::endl;
+			std::cout << "[ import ] SUCCESS: Imported file: <" << l_full_file_path << "> with prefix: " << l_identifier << " merging: " << l_import_symbols.size() << " symbols." << std::endl;
 #endif
 		}
 		else {
 #if CFVI_DEBUG
-			std::cout << "[ import ] ERROR: Could not import file: \"" << l_full_file_path << "\" with prefix: " << l_identifier << std::endl;
+			std::cout << "[ import ] ERROR: Could not import file: <" << l_full_file_path << "> with prefix: " << l_identifier << std::endl;
 #endif
 		}
 	}
@@ -201,13 +196,14 @@ void interpretation::interpret_import(const string& a_directory_path, string& a_
 		if (!interpret(l_full_file_path, l_import_symbols)) {
 			merge_symbols(a_symbols, l_import_symbols);
 #if CFVI_DEBUG
-			std::cout << "[ import ] SUCCESS: Imported file: \"" << l_full_file_path << "\", " << " merging: " << l_import_symbols.size() << " symbols in local dictionary." << std::endl;
+			std::cout << "[ import ] SUCCESS: Imported file: <" << l_full_file_path << ">, " << " merging: " << l_import_symbols.size() << " symbols in local dictionary." << std::endl;
 #endif
 		}
 		else {
 #if CFVI_DEBUG
-			std::cout << "[ import ] ERROR: Could not import file: \"" << l_full_file_path << "\"" << std::endl;
+			std::cout << "[ import ] ERROR: Could not import file: <" << l_full_file_path << ">" << std::endl;
 #endif
 		}
 	}
 }
+#pragma endregion
