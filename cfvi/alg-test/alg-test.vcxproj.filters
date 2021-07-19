@@ -13,21 +13,10 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Header Files\interpretation">
-      <UniqueIdentifier>{70d4ed3a-faa9-4805-8243-79f34c9c7687}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\interpretation">
-      <UniqueIdentifier>{7d76aae7-635f-40de-8e87-b8769c14529c}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="interpret.h">
-      <Filter>Header Files\interpretation</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="interpret.cpp">
-      <Filter>Source Files\interpretation</Filter>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
