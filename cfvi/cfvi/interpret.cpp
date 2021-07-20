@@ -52,6 +52,17 @@ string trim(const string& a_string, const vector<char>& a_chars) {
 		result = trim(result, a_chars[i]);
 	return result;
 }
+
+size_t find(const string& a_string, const char& a_char, const int& a_find_index = 0) {
+	int l_find_index = 0;
+	for (int i = 0; i < a_string.size(); i++)
+		if (a_string[i] == a_char)
+			if (l_find_index == a_find_index)
+				return i;
+			else
+				l_find_index++;
+	return a_string.size();
+}
 #pragma endregion
 #pragma region symbol
 vector<symbol>::iterator find_symbol(vector<symbol>& a_symbols, const string& a_identifier) {
@@ -105,11 +116,11 @@ int interpretation::interpret(const string & a_file_path, vector<symbol>& a_symb
 
 void interpretation::interpret_line(const string& a_directory_path, string& a_line, vector<symbol>& a_symbols) {
 	dereference_symbols(a_line, a_symbols);
-	if (a_line.size() > 4 && a_line.substr(0, 4) == "set ") {
-		interpret_set(a_line, a_symbols);
+	if (a_line.size() > 4 && a_line.substr(0, 7) == "define ") {
+		interpret_define(a_line, a_symbols);
 	}
-	else if (a_line.size() > 7 && a_line.substr(0, 7) == "delete ") {
-		interpret_delete(a_line, a_symbols);
+	else if (a_line.size() > 7 && a_line.substr(0, 6) == "undef ") {
+		interpret_undef(a_line, a_symbols);
 	}
 	else if (a_line.size() > 7 && a_line.substr(0, 7) == "import ") {
 		interpret_import(a_directory_path, a_line, a_symbols);
@@ -117,29 +128,29 @@ void interpretation::interpret_line(const string& a_directory_path, string& a_li
 
 }
 
-void interpretation::interpret_set(string& a_line, vector<symbol>& a_symbols) {
-	const size_t l_identifier_begin = 4;
-	size_t l_identifier_end = a_line.find('=');
+void interpretation::interpret_define(string& a_line, vector<symbol>& a_symbols) {
+	size_t l_identifier_begin = a_line.find(' ') + 1;
+	size_t l_identifier_end = find(a_line, ' ', 1);
 	size_t l_identifier_length = l_identifier_end - l_identifier_begin;
 	string l_identifier = a_line.substr(l_identifier_begin, l_identifier_length);
-	l_identifier = trim(l_identifier, ' ');
 
 	size_t l_value_begin = l_identifier_end + 1;
-	size_t l_value_end = a_line.length();
+	size_t l_value_end = a_line.size();
 	size_t l_value_length = l_value_end - l_value_begin;
-	string l_value = a_line.substr(l_value_begin, l_value_length);
-	l_value = trim(l_value, ' ');
+	string l_value;
+
+	if (l_value_begin < a_line.size())
+		l_value = a_line.substr(l_value_begin, l_value_length);
 
 	merge_symbol(a_symbols, { l_identifier, l_value });
 
 #if CFVI_DEBUG
-	std::cout << "[ set ] SUCCESS: Merged symbol: " << l_identifier << " into dictionary." << std::endl;
+	std::cout << "[ define ] SUCCESS: Merged symbol: " << l_identifier << " into dictionary." << std::endl;
 #endif
-
 }
 
-void interpretation::interpret_delete(string& a_line, vector<symbol>& a_symbols) {
-	const size_t l_identifier_begin = 7;
+void interpretation::interpret_undef(string& a_line, vector<symbol>& a_symbols) {
+	size_t l_identifier_begin = find(a_line, ' ', 0) + 1;
 	size_t l_identifier_end = a_line.size();
 	size_t l_identifier_length = l_identifier_end - l_identifier_begin;
 	string l_identifier = a_line.substr(l_identifier_begin, l_identifier_length);
@@ -149,12 +160,12 @@ void interpretation::interpret_delete(string& a_line, vector<symbol>& a_symbols)
 	if (l_identifier_pos != a_symbols.end()) {
 		a_symbols.erase(l_identifier_pos);
 #if CFVI_DEBUG
-		std::cout << "[ delete ] SUCCESS: Erased symbol: " << l_identifier << " from the dictionary." << std::endl;
+		std::cout << "[ undef ] SUCCESS: Erased symbol: " << l_identifier << " from the dictionary." << std::endl;
 #endif
 	}
 	else {
 #if CFVI_DEBUG
-		std::cout << "[ delete ] ERROR: Could not find symbol: " << l_identifier << " in the dictionary." << std::endl;
+		std::cout << "[ undef ] ERROR: Could not find symbol: " << l_identifier << " in the dictionary." << std::endl;
 #endif
 	}
 }
@@ -170,6 +181,8 @@ void interpretation::interpret_import(const string& a_directory_path, string& a_
 		l_full_file_path = l_file_path;
 	else
 		l_full_file_path = a_directory_path + l_file_path;
+
+
 
 	vector<symbol> l_import_symbols;
 

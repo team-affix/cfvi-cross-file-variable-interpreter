@@ -1,2 +1,0 @@
-set ifa_key = public_key_0
-set ifa_grant = r,w

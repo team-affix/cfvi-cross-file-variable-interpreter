@@ -1,3 +1,0 @@
-import <../test.txt> as parent
-set ifa_key = %parent.ifa_key%
-set ifa_grant = r
