@@ -1,5 +1,0 @@
-import <auth.txt>
-define any
-define any_grant r
-define ifa public_key_0
-define ifa_grant r,w

@@ -7,7 +7,7 @@ int main() {
 
 	vector<symbol> symbols;
 
-	interpret("account/auth.txt", symbols);
+	interpret("test1.txt", symbols);
 
 	std::cout << "\n\n\n\n\n\n\n";
 
