@@ -5,9 +5,11 @@ using namespace cfvi::interpretation;
 
 int main() {
 
-	vector<symbol> symbols;
+	interpreter i = interpreter();
+	i.import({ "account/secure_data/.clearance" });
 
-	interpret("test1.txt", symbols);
+	interpreter i2 = interpreter();
+	i2.import({"account/.clearance"});
 
 	std::cout << "\n\n\n\n\n\n\n";
 
