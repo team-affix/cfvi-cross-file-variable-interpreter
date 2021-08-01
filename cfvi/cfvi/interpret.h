@@ -1,5 +1,5 @@
 #pragma once
-#define CFVI_DEBUG 1
+#define CFVI_DEBUG 0
 
 #include <string>
 #include <vector>
