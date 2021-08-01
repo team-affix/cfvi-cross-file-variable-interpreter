@@ -1,5 +1,5 @@
 #pragma once
-#define CFVI_DEBUG 0
+#define CFVI_DEBUG 1
 
 #include <string>
 #include <vector>
@@ -25,12 +25,13 @@ namespace cfvi {
 				string value;
 			};
 			struct undef_decl {
-				string identifier;
+				vector<string> identifiers;
 			};
 			struct import_decl {
 			public:
 				string path;
-				string identifier = "";
+				string prefix = "";
+				vector<string> identifiers;
 			};
 
 		public:
