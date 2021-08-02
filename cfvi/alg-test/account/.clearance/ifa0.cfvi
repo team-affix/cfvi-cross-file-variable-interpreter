@@ -1,2 +1,0 @@
-define -i ifa0.key -v public_key
-define -i ifa0.grant -v r,w

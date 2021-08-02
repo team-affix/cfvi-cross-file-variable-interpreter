@@ -1,2 +1,0 @@
-define -i noauth
-define -i noauth.grant -v r

@@ -54,6 +54,14 @@ string trim(const string& a_string, const vector<char>& a_chars) {
 		result = trim(result, a_chars[i]);
 	return result;
 }
+void trim_right_until(string& a_string, const char& a_char) {
+	for (int i = a_string.size() - 1; i >= 0; i--) {
+		if (a_string[i] != a_char)
+			a_string.pop_back();
+		else
+			return;
+	}
+}
 size_t find(const string& a_string, const char& a_char, const int& a_find_index = 0) {
 	int l_find_index = 0;
 	for (int i = 0; i < a_string.size(); i++)
@@ -165,7 +173,10 @@ void merge_imported_files(vector<interpreter::imported_file>& a_current, const v
 #pragma endregion
 #pragma region interpreting
 
-void interpreter::define(const define_decl& a_decl) {
+interpreter::interpreter(string a_parent_directory) : m_parent_directory(fs::absolute(a_parent_directory).string()) {
+
+}
+void interpreter::process_define(const define_decl& a_decl) {
 	
 	if (a_decl.identifier == "") {
 #if CFVI_DEBUG
@@ -181,23 +192,23 @@ void interpreter::define(const define_decl& a_decl) {
 #endif
 
 }
-void interpreter::undef(const undef_decl& a_decl) {
+void interpreter::process_undef(const undef_decl& a_decl) {
 
 	for (const string& l_identifier : a_decl.identifiers) {
 
 		size_t last_result_pos = 0;
 		vector<symbol>::iterator l_result_pos;
 
+		bool l_success_once = false;
+
 		while (true) {
 
 			l_result_pos = query_symbols_for_first_result(m_symbols, l_identifier, last_result_pos);
 			last_result_pos = l_result_pos - m_symbols.begin();
 
-			if (l_result_pos == m_symbols.end())
-				break;
-
 			if (l_result_pos != m_symbols.end()) {
 				// SYMBOL EXISTS
+				l_success_once = true;
 #if CFVI_DEBUG
 				std::cout << "[ undef ] SUCCESS: Erased symbol: " << l_result_pos->identifier << " from the dictionary." << std::endl;
 #endif
@@ -205,45 +216,63 @@ void interpreter::undef(const undef_decl& a_decl) {
 			}
 			else {
 #if CFVI_DEBUG
-				std::cout << "[ undef ] ERROR: Could not find symbol: " << l_result_pos->identifier << " in the dictionary." << std::endl;
+				if (!l_success_once)
+					std::cout << "[ undef ] ERROR: Could not find symbols matching query: " << l_identifier << " in the dictionary." << std::endl;
 #endif
+				break;
 			}
 		}
 
 	}
 
 }
-void interpreter::import(const import_decl& a_decl) {
+void interpreter::process_import(const import_decl& a_decl) {
 	
-	interpreter l_interpreter = interpreter();
-	l_interpreter.m_imported_files = m_imported_files;
-	
-	fs::path l_path = fs::absolute(a_decl.path);
-
-	if (fs::is_directory(l_path))
-		l_interpreter.import_directory(l_path.string());
-	else
-		l_interpreter.import_file(l_path.string());
-
-	// ONLY IMPORT SYMBOLS WITH SPEICFIED IDENTIFIERS
-	if (a_decl.identifiers.size() > 0) {
-		std::erase_if(l_interpreter.m_symbols, [&](const symbol& a_symbol) {
-			return !any_can_query(a_symbol.identifier, a_decl.identifiers);
-		});
+	if (a_decl.paths.size() == 0) {
+#if CFVI_DEBUG
+		std::cout << "[ import ] ERROR: No file names were inputted. Use the -v or --values flag to signify the path(s) to the file(s) you wish to import." << std::endl;
+#endif
+		return;
 	}
 
-	if (a_decl.prefix != "")
-		prefix_symbols(l_interpreter.m_symbols, a_decl.prefix);
+	for (string l_path_string : a_decl.paths) {
+
+		fs::path l_path = fs::absolute(l_path_string);
+
+		interpreter l_interpreter = interpreter(l_path.parent_path().string());
+		l_interpreter.m_imported_files = m_imported_files;
+
+		if (l_path.extension().string() != ".cfvi" || !l_interpreter.interpret_file(l_path.string())) {
+#if CFVI_DEBUG
+			std::cout << "[ import ] ERROR: Could not stage symbols from module: <" << l_path.string() << ">" << std::endl;
+#endif
+			return;
+		}
+
+		// ONLY IMPORT SYMBOLS WITH SPEICFIED IDENTIFIERS
+		if (a_decl.identifiers.size() > 0) {
+			std::erase_if(l_interpreter.m_symbols, [&](const symbol& a_symbol) {
+				return !any_can_query(a_symbol.identifier, a_decl.identifiers);
+			});
+		}
+
+		if (a_decl.prefix != "")
+			prefix_symbols(l_interpreter.m_symbols, a_decl.prefix);
 	
-	merge_imported_files(m_imported_files, l_interpreter.m_imported_files);
-	merge_symbols(m_symbols, l_interpreter.m_symbols);
+		merge_imported_files(m_imported_files, l_interpreter.m_imported_files);
+		merge_symbols(m_symbols, l_interpreter.m_symbols);
 
 #if CFVI_DEBUG
-	std::cout << "[ import ] SUCCESS: Imported module: <" << a_decl.path << "> merging: " << l_interpreter.m_symbols.size() << " symbols." << std::endl;
+		std::cout << "[ import ] SUCCESS: Merged " << l_interpreter.m_symbols.size() << " symbols from module: <" << l_path.string() << ">" << std::endl;
 #endif
 
+	}
+
 }
-bool interpreter::interpret_file(const string & a_file_path) {
+void interpreter::process_import(const string& a_file_name) {
+	process_import(import_decl{{a_file_name}});
+}
+bool interpreter::interpret_file(const string& a_file_path) {
 
 	ifstream ifs(a_file_path);
 	if (!ifs.is_open())
@@ -258,7 +287,7 @@ bool interpreter::interpret_file(const string & a_file_path) {
 
 	string l_line;
 	while (std::getline(ifs, l_line)) {
-		interpret_line(l_directory_path, l_line);
+		interpret_line(l_line);
 	}
 	ifs.close();
 
@@ -269,20 +298,20 @@ bool interpreter::interpret_file(const string & a_file_path) {
 
 	return true;
 }
-void interpreter::interpret_line(const string& a_directory_path, string& a_line) {
+void interpreter::interpret_line(string& a_line) {
 	dereference_symbols(a_line, m_symbols);
 
 	vector<string> l_args = split_respect_quotes(a_line, ARG_SEPARATE);
 	if (l_args.size() == 0)
 		return;
 	if (l_args[0] == "define") {
-		define(parse_define(l_args));
+		process_define(parse_define(l_args));
 	}
 	else if (l_args[0] == "undef") {
-		undef(parse_undef(l_args));
+		process_undef(parse_undef(l_args));
 	}
 	else if (l_args[0] == "import") {
-		import(parse_import(a_directory_path, l_args));
+		process_import(parse_import(l_args));
 	}
 
 }
@@ -301,10 +330,12 @@ interpreter::define_decl interpreter::parse_define(const vector<string>& a_args)
 
 			if (l_arg == "-i" || l_arg == "--identifier") {
 				l_identifier = l_next_arg;
+				i++;
 				continue;
 			}
 			else if (l_arg == "-v" || l_arg == "--value") {
 				l_value = l_next_arg;
+				i++;
 				continue;
 			}
 
@@ -338,6 +369,7 @@ interpreter::undef_decl interpreter::parse_undef(const vector<string>& a_args) {
 
 			if (l_arg == "-i" || l_arg == "--identifiers") {
 				l_identifiers = split(l_next_arg, ARG_LIST);
+				i++;
 				continue;
 			}
 
@@ -353,11 +385,12 @@ interpreter::undef_decl interpreter::parse_undef(const vector<string>& a_args) {
 
 	return { l_identifiers };
 }
-interpreter::import_decl interpreter::parse_import(const string& a_directory_path, const vector<string>& a_args) {
+interpreter::import_decl interpreter::parse_import(const vector<string>& a_args) {
 
-	fs::path l_full_path;
+	vector<string> l_full_paths;
 	string l_prefix;
 	vector<string> l_identifiers;
+	bool l_recursive = false;
 
 	for (int i = 1; i < a_args.size(); i++) {
 
@@ -367,24 +400,36 @@ interpreter::import_decl interpreter::parse_import(const string& a_directory_pat
 
 			const string& l_next_arg = a_args[i + 1];
 
-			if (l_arg == "-v" || l_arg == "--value") {
-				l_full_path = fs::absolute(a_directory_path + "/" + l_next_arg);
+			if (l_arg == "-v" || l_arg == "--values") {
+				vector<string> l_paths = split(l_next_arg, ARG_LIST);
+				for (const string& l_path : l_paths)
+					l_full_paths.push_back(fs::absolute(m_parent_directory + "/" + l_path).string());
+				i++;
 				continue;
 			}
 			if (l_arg == "-p" || l_arg == "--prefix") {
 				l_prefix = l_next_arg;
+				i++;
 				continue;
 			}
 			if (l_arg == "-i" || l_arg == "--identifiers") {
 				l_identifiers = split_respect_quotes(l_next_arg, ARG_LIST);
+				i++;
 				continue;
 			}
 
 		}
 
+		if (l_arg == "-r" || l_arg == "--recursive") {
+			l_recursive = true;
+			continue;
+		}
+
 		// DEFAULT ARGS
 		if (i == 1) {
-			l_full_path = fs::absolute(a_directory_path + "/" + l_arg);
+			vector<string> l_paths = split(l_arg, ARG_LIST);
+			for (const string& l_path : l_paths)
+				l_full_paths.push_back(fs::absolute(m_parent_directory + "/" + l_path).string());
 			continue;
 		}
 		if (i == 2) {
@@ -394,7 +439,7 @@ interpreter::import_decl interpreter::parse_import(const string& a_directory_pat
 
 	}
 
-	return { l_full_path.string(), l_prefix, l_identifiers };
+	return { l_full_paths, l_prefix, l_identifiers, l_recursive };
 }
 bool interpreter::depend(const string& a_absolute_file_path) {
 
@@ -413,27 +458,6 @@ bool interpreter::depend(const string& a_absolute_file_path) {
 	}
 
 	return true;
-}
-void interpreter::import_file(const string& a_import_path) {
-
-	if (interpret_file(a_import_path)) {
-#if CFVI_DEBUG
-		std::cout << "[ import ] SUCCESS: Imported file: <" << a_import_path << "> staging: " << m_symbols.size() << " symbols for merge." << std::endl;
-#endif
-	}
-	else {
-#if CFVI_DEBUG
-		std::cout << "[ import ] ERROR: Could not import file: <" << a_import_path << ">" << std::endl;
-#endif
-	}
-
-}
-void interpreter::import_directory(const string& a_import_path) {
-	for (const std::filesystem::path& l_path : fs::directory_iterator(a_import_path))
-		if (fs::is_directory(l_path))
-			import_directory(l_path.string());
-		else
-			import_file(l_path.string());
 }
 
 #pragma endregion

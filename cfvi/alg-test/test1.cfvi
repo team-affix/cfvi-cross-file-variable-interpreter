@@ -1,2 +1,0 @@
-import -v test2.cfvi -i public -p module
-import -v test2.cfvi -i %module.public% -p module

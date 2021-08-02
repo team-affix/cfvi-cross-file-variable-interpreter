@@ -35,10 +35,21 @@ using namespace cfvi::interpretation;
 //	return true;
 //}
 
+void shell_test() {
+	interpreter i = interpreter("./");
+
+	while (true) {
+		string line;
+		std::getline(std::cin, line);
+		i.interpret_line(line);
+	}
+}
+
 int main() {
 
-	interpreter i = interpreter();
-	i.import({ "test1.cfvi" });
+	shell_test();
+	interpreter i = interpreter("./");
+	i.process_import("account/secure_data/identities.cfvi");
 
 	std::cout << "\n\n\n\n\n\n\n";
 
