@@ -184,6 +184,12 @@ void interpreter::process_define(const define_decl& a_decl) {
 #endif
 		return;
 	}
+	if (a_decl.identifier.find("*") != string::npos) {
+#if CFVI_DEBUG
+		std::cout << "[ define ] ERROR: Cannot merge symbol with a wildcard (*) in the identifier into the dictionary." << std::endl;
+#endif
+		return;
+	}
 
 	merge_symbol(m_symbols, {a_decl.identifier, a_decl.value});
 
@@ -193,6 +199,12 @@ void interpreter::process_define(const define_decl& a_decl) {
 
 }
 void interpreter::process_undef(const undef_decl& a_decl) {
+
+	if (a_decl.identifiers.size() == 0) {
+#if CFVI_DEBUG
+		std::cout << "[ undef ] ERROR: No symbols identifiers entered." << std::endl;
+#endif
+	}
 
 	for (const string& l_identifier : a_decl.identifiers) {
 

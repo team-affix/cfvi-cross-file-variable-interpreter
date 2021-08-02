@@ -1,0 +1,3 @@
+import files_to_import.cfvi
+import %files_to_import%
+undef files_to_import

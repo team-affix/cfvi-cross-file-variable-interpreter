@@ -37,7 +37,6 @@ using namespace cfvi::interpretation;
 
 void shell_test() {
 	interpreter i = interpreter("./");
-
 	while (true) {
 		string line;
 		std::getline(std::cin, line);
