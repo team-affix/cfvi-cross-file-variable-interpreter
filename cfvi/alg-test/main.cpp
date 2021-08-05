@@ -47,8 +47,9 @@ void shell_test() {
 int main() {
 
 	shell_test();
+
 	interpreter i = interpreter("./");
-	i.process_import("account/secure_data/identities.cfvi");
+	i.process_import("test1.cfvi");
 
 	std::cout << "\n\n\n\n\n\n\n";
 

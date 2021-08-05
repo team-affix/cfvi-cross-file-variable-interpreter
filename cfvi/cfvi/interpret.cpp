@@ -171,6 +171,15 @@ void merge_imported_files(vector<interpreter::imported_file>& a_current, const v
 }
 
 #pragma endregion
+#pragma region path
+vector<string> get_files(const string& a_directory) {
+	vector<string> result;
+	for (const fs::path& l_sub_path : fs::directory_iterator(a_directory))
+		if (!fs::is_directory(l_sub_path))
+			result.push_back(l_sub_path.string());
+	return result;
+}
+#pragma endregion
 #pragma region interpreting
 
 interpreter::interpreter(string a_parent_directory) : m_parent_directory(fs::absolute(a_parent_directory).string()) {
@@ -202,7 +211,7 @@ void interpreter::process_undef(const undef_decl& a_decl) {
 
 	if (a_decl.identifiers.size() == 0) {
 #if CFVI_DEBUG
-		std::cout << "[ undef ] ERROR: No symbols identifiers entered." << std::endl;
+		std::cout << "[ undef ] ERROR: Cannot erase symbol without an identifier. Use -i or --identifiers to specify the identifiers of the symbols you wish to erase." << std::endl;
 #endif
 	}
 
@@ -251,6 +260,16 @@ void interpreter::process_import(const import_decl& a_decl) {
 
 		fs::path l_path = fs::absolute(l_path_string);
 
+		// IF THE PATH IS A DIRECTORY, IMPORT EACH FILE IN THAT DIRECTORY
+		if (fs::is_directory(l_path)) {
+			import_decl l_decl;
+			l_decl.prefix = a_decl.prefix;
+			l_decl.identifiers = a_decl.identifiers;
+			l_decl.paths = get_files(l_path.string());
+			process_import(l_decl);
+			continue;
+		}
+
 		interpreter l_interpreter = interpreter(l_path.parent_path().string());
 		l_interpreter.m_imported_files = m_imported_files;
 
@@ -258,7 +277,7 @@ void interpreter::process_import(const import_decl& a_decl) {
 #if CFVI_DEBUG
 			std::cout << "[ import ] ERROR: Could not stage symbols from module: <" << l_path.string() << ">" << std::endl;
 #endif
-			return;
+			continue;
 		}
 
 		// ONLY IMPORT SYMBOLS WITH SPEICFIED IDENTIFIERS
@@ -270,7 +289,7 @@ void interpreter::process_import(const import_decl& a_decl) {
 
 		if (a_decl.prefix != "")
 			prefix_symbols(l_interpreter.m_symbols, a_decl.prefix);
-	
+
 		merge_imported_files(m_imported_files, l_interpreter.m_imported_files);
 		merge_symbols(m_symbols, l_interpreter.m_symbols);
 
@@ -402,7 +421,6 @@ interpreter::import_decl interpreter::parse_import(const vector<string>& a_args)
 	vector<string> l_full_paths;
 	string l_prefix;
 	vector<string> l_identifiers;
-	bool l_recursive = false;
 
 	for (int i = 1; i < a_args.size(); i++) {
 
@@ -432,11 +450,6 @@ interpreter::import_decl interpreter::parse_import(const vector<string>& a_args)
 
 		}
 
-		if (l_arg == "-r" || l_arg == "--recursive") {
-			l_recursive = true;
-			continue;
-		}
-
 		// DEFAULT ARGS
 		if (i == 1) {
 			vector<string> l_paths = split(l_arg, ARG_LIST);
@@ -451,7 +464,7 @@ interpreter::import_decl interpreter::parse_import(const vector<string>& a_args)
 
 	}
 
-	return { l_full_paths, l_prefix, l_identifiers, l_recursive };
+	return { l_full_paths, l_prefix, l_identifiers };
 }
 bool interpreter::depend(const string& a_absolute_file_path) {
 

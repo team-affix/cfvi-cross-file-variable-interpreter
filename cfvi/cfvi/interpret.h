@@ -32,7 +32,6 @@ namespace cfvi {
 				vector<string> paths;
 				string prefix = "";
 				vector<string> identifiers;
-				bool recursive = false;
 			};
 
 		public:

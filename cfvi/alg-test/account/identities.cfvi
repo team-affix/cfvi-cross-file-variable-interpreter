@@ -1,5 +1,1 @@
-define noauth
-define noauth.permissions r
-define ifa0
-define ifa0.key public_key
-define ifa0.grant r,w
+define auth public_key_data
