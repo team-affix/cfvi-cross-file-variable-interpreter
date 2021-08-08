@@ -52,15 +52,15 @@ void shell_test() {
 }
 
 void program_test() {
-	interpreter i = interpreter("./");
-	i.process_import("test1.cfvi");
+	interpreter i = interpreter("C:\\Users\\jake\\Desktop\\data\\account_1\\.as");
+	i.process_import("/");
 
 	std::cout << "\n\n\n\n\n\n\n";
 }
 
 int main() {
 
-	shell_test();
+	program_test();
 
 	return 0;
 }
