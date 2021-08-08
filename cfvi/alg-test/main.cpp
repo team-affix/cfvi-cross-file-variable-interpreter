@@ -36,22 +36,30 @@ using namespace cfvi::interpretation;
 //}
 
 void shell_test() {
-	interpreter i = interpreter("./");
+	interpreter l_interpreter = interpreter("./");
 	while (true) {
 		string line;
 		std::getline(std::cin, line);
-		i.interpret_line(line);
+		if (line != "exit")
+			l_interpreter.interpret_line(line);
+		else
+			break;
 	}
+	for (int i = 0; i < l_interpreter.m_symbols.size(); i++)
+		std::cout << "symbol: " << l_interpreter.m_symbols[i].identifier << ": " << l_interpreter.m_symbols[i].value;
+	std::cout << "\n\n\n\n\n\n\n";
+}
+
+void program_test() {
+	interpreter i = interpreter("C:\\Users\\jake\\Desktop\\data\\account_1\\.as");
+	i.process_import("/");
+
+	std::cout << "\n\n\n\n\n\n\n";
 }
 
 int main() {
 
-	shell_test();
-
-	interpreter i = interpreter("./");
-	i.process_import("test1.cfvi");
-
-	std::cout << "\n\n\n\n\n\n\n";
+	program_test();
 
 	return 0;
 }

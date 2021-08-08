@@ -301,7 +301,7 @@ void interpreter::process_import(const import_decl& a_decl) {
 
 }
 void interpreter::process_import(const string& a_file_name) {
-	process_import(import_decl{{a_file_name}});
+	process_import(import_decl{{fs::absolute(m_parent_directory + "/" + a_file_name).string()}});
 }
 bool interpreter::interpret_file(const string& a_file_path) {
 
