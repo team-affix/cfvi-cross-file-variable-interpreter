@@ -60,7 +60,7 @@ void program_test() {
 
 int main() {
 
-	program_test();
+	shell_test();
 
 	return 0;
 }

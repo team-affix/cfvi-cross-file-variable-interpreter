@@ -1,14 +1,12 @@
 #pragma once
-#define CFVI_DEBUG 1
 
 #include <string>
 #include <vector>
 
-using std::string;
-using std::vector;
-
 namespace cfvi {
 	namespace interpretation {
+		using std::string;
+		using std::vector;
 		class interpreter {
 		public:
 			struct symbol {

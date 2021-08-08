@@ -4,12 +4,14 @@
 #include <filesystem>
 
 #define CFVI_DEREFERENCE '%'
-#define ARG_SEPARATE ' '
-#define ARG_LIST ','
+#define CFVI_ARG_SEPARATE ' '
+#define CFVI_ARG_LIST ','
 
 using namespace cfvi;
 using interpretation::interpreter;
 using std::ifstream;
+using std::string;
+using std::vector;
 namespace fs = std::filesystem;
 
 #pragma region string
@@ -332,7 +334,7 @@ bool interpreter::interpret_file(const string& a_file_path) {
 void interpreter::interpret_line(string& a_line) {
 	dereference_symbols(a_line, m_symbols);
 
-	vector<string> l_args = split_respect_quotes(a_line, ARG_SEPARATE);
+	vector<string> l_args = split_respect_quotes(a_line, CFVI_ARG_SEPARATE);
 	if (l_args.size() == 0)
 		return;
 	if (l_args[0] == "define") {
@@ -399,7 +401,7 @@ interpreter::undef_decl interpreter::parse_undef(const vector<string>& a_args) {
 			const string& l_next_arg = a_args[i + 1];
 
 			if (l_arg == "-i" || l_arg == "--identifiers") {
-				l_identifiers = split(l_next_arg, ARG_LIST);
+				l_identifiers = split(l_next_arg, CFVI_ARG_LIST);
 				i++;
 				continue;
 			}
@@ -408,7 +410,7 @@ interpreter::undef_decl interpreter::parse_undef(const vector<string>& a_args) {
 
 		// DEFAULT ARGS
 		if (i == 1) {
-			l_identifiers = split(l_arg, ARG_LIST);
+			l_identifiers = split(l_arg, CFVI_ARG_LIST);
 			continue;
 		}
 
@@ -431,7 +433,7 @@ interpreter::import_decl interpreter::parse_import(const vector<string>& a_args)
 			const string& l_next_arg = a_args[i + 1];
 
 			if (l_arg == "-v" || l_arg == "--values") {
-				vector<string> l_paths = split(l_next_arg, ARG_LIST);
+				vector<string> l_paths = split(l_next_arg, CFVI_ARG_LIST);
 				for (const string& l_path : l_paths)
 					l_full_paths.push_back(fs::absolute(m_parent_directory + "/" + l_path).string());
 				i++;
@@ -443,7 +445,7 @@ interpreter::import_decl interpreter::parse_import(const vector<string>& a_args)
 				continue;
 			}
 			if (l_arg == "-i" || l_arg == "--identifiers") {
-				l_identifiers = split_respect_quotes(l_next_arg, ARG_LIST);
+				l_identifiers = split_respect_quotes(l_next_arg, CFVI_ARG_LIST);
 				i++;
 				continue;
 			}
@@ -452,13 +454,13 @@ interpreter::import_decl interpreter::parse_import(const vector<string>& a_args)
 
 		// DEFAULT ARGS
 		if (i == 1) {
-			vector<string> l_paths = split(l_arg, ARG_LIST);
+			vector<string> l_paths = split(l_arg, CFVI_ARG_LIST);
 			for (const string& l_path : l_paths)
 				l_full_paths.push_back(fs::absolute(m_parent_directory + "/" + l_path).string());
 			continue;
 		}
 		if (i == 2) {
-			l_identifiers = split_respect_quotes(l_arg, ARG_LIST);
+			l_identifiers = split_respect_quotes(l_arg, CFVI_ARG_LIST);
 			continue;
 		}
 
